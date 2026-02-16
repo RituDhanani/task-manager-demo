@@ -2,11 +2,13 @@ from rest_framework import generics, status
 from .models import User
 from .serializers import (SignupSerializer, LoginSerializer, ChangePasswordSerializer,
                           ResetPasswordOTPRequestSerializer,
-                          ResetPasswordOTPConfirmSerializer, UserProfileSerializer)
+                          ResetPasswordOTPConfirmSerializer, UserProfileSerializer,
+                          LogoutSerializer)
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 
@@ -79,3 +81,19 @@ class UserProfileView(APIView):
     def get(self, request):
         serializer = UserProfileSerializer(request.user)
         return Response(serializer.data)
+
+
+# Logout API View
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]  # optional if you want to require access token
+
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        refresh_token = serializer.validated_data['refresh']
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"detail": "Logout successful. Token has been blacklisted."}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"detail": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
