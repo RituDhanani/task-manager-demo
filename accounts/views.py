@@ -2,7 +2,7 @@ from rest_framework import generics, status
 from .models import User
 from .serializers import (SignupSerializer, LoginSerializer, ChangePasswordSerializer,
                           ResetPasswordOTPRequestSerializer,
-                          ResetPasswordOTPConfirmSerializer)
+                          ResetPasswordOTPConfirmSerializer, UserProfileSerializer)
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -47,6 +47,7 @@ class ChangePasswordAPIView(APIView):
     
 
 # Password Reset OTP Request API View
+
 class ResetPasswordOTPRequestAPIView(APIView):
 
     def post(self, request):
@@ -69,3 +70,12 @@ class ResetPasswordOTPConfirmAPIView(APIView):
                 status=status.HTTP_200_OK
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# User Profile API View
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserProfileSerializer(request.user)
+        return Response(serializer.data)

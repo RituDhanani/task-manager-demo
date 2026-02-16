@@ -108,3 +108,9 @@ class ResetPasswordOTPConfirmSerializer(serializers.Serializer):
 
         return attrs
 
+# User Profile Serializer
+User = get_user_model()
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'role']
