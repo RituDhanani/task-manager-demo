@@ -2,9 +2,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import TaskCreateSerializer, TaskListSerializer, TaskUpdateSerializer
+from .serializers import (TaskCreateSerializer, TaskListSerializer, 
+                          TaskUpdateSerializer)
 from .permissions import IsAdminOrManager
-from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
+from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView,
+                                    DestroyAPIView)
 from .models import Task
 from rest_framework.exceptions import PermissionDenied
 
@@ -85,7 +87,7 @@ class RetrieveTaskAPIView(RetrieveAPIView):
         raise PermissionDenied("You do not have permission to access this task.")
 
 
-#update tsk apiview
+#update task apiview
 class UpdateTaskAPIView(UpdateAPIView):
     queryset = Task.objects.all()
     serializer_class = TaskUpdateSerializer
@@ -105,3 +107,20 @@ class UpdateTaskAPIView(UpdateAPIView):
             return task
 
         raise PermissionDenied("You do not have permission to update this task.")
+    
+
+#delete task apiview
+class DeleteTaskAPIView(DestroyAPIView):
+    queryset = Task.objects.all()
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_object(self):
+        task = super().get_object()
+        user = self.request.user
+
+        # Only Admin can delete
+        if user.role == "Admin":
+            return task
+
+        raise PermissionDenied("Only Admin can delete tasks.")
