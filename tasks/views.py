@@ -4,8 +4,10 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .serializers import TaskCreateSerializer, TaskListSerializer
 from .permissions import IsAdminOrManager
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from .models import Task
+from rest_framework.exceptions import PermissionDenied
+
 
 #create task apiview
 class CreateTaskAPIView(APIView):
@@ -54,3 +56,30 @@ class ListTaskAPIView(ListAPIView):
             ).order_by("-created_at")
 
         return Task.objects.none()
+
+
+# retrieve task apiview
+class RetrieveTaskAPIView(RetrieveAPIView):
+
+    queryset = Task.objects.all()
+    serializer_class = TaskListSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_object(self):
+        task = super().get_object()
+        user = self.request.user
+
+        # Admin → Can access any task
+        if user.role == "Admin":
+            return task
+
+        # Manager → Only tasks created by them
+        if user.role == "Manager" and task.created_by == user:
+            return task
+
+        # Member → Only tasks assigned to them
+        if user.role == "Member" and task.assigned_to == user:
+            return task
+
+        raise PermissionDenied("You do not have permission to access this task.")
