@@ -36,3 +36,23 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         )
 
         return task
+
+
+
+class TaskListSerializer(serializers.ModelSerializer):
+    assigned_to = serializers.EmailField(source="assigned_to.email")
+    created_by = serializers.EmailField(source="created_by.email")
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "description",
+            "priority",
+            "status",
+            "assigned_to",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
