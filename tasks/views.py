@@ -40,24 +40,25 @@ class ListTaskAPIView(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        status_param = self.request.query_params.get("status")
 
-        # Admin → See all tasks
         if user.role == "Admin":
-            return Task.objects.all().order_by("-created_at")
+            queryset = Task.objects.all()
 
-        # Manager → See tasks created by them
-        if user.role == "Manager":
-            return Task.objects.filter(
-                created_by=user
-            ).order_by("-created_at")
+        elif user.role == "Manager":
+            queryset = Task.objects.filter(created_by=user)
 
-        # Member → See tasks assigned to them
-        if user.role == "Member":
-            return Task.objects.filter(
-                assigned_to=user
-            ).order_by("-created_at")
+        elif user.role == "Member":
+            queryset = Task.objects.filter(assigned_to=user)
 
-        return Task.objects.none()
+        else:
+            return Task.objects.none()
+
+        # Apply status filter if provided
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+
+        return queryset.order_by("-created_at")
 
 
 # retrieve task apiview
