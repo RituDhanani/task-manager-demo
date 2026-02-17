@@ -2,9 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import TaskCreateSerializer, TaskListSerializer
+from .serializers import TaskCreateSerializer, TaskListSerializer, TaskUpdateSerializer
 from .permissions import IsAdminOrManager
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
 from .models import Task
 from rest_framework.exceptions import PermissionDenied
 
@@ -83,3 +83,25 @@ class RetrieveTaskAPIView(RetrieveAPIView):
             return task
 
         raise PermissionDenied("You do not have permission to access this task.")
+
+
+#update tsk apiview
+class UpdateTaskAPIView(UpdateAPIView):
+    queryset = Task.objects.all()
+    serializer_class = TaskUpdateSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_object(self):
+        task = super().get_object()
+        user = self.request.user
+
+        # Manager → Can update only tasks they created
+        if user.role == "Manager" and task.created_by == user:
+            return task
+
+        # Member → Can update only tasks assigned to them
+        if user.role == "Member" and task.assigned_to == user:
+            return task
+
+        raise PermissionDenied("You do not have permission to update this task.")
