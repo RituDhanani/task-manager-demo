@@ -2,9 +2,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import TaskCreateSerializer, TaskListSerializer, TaskUpdateSerializer
+from .serializers import (TaskCreateSerializer, TaskListSerializer, 
+                          TaskUpdateSerializer)
 from .permissions import IsAdminOrManager
-from rest_framework.generics import ListAPIView, RetrieveAPIView, UpdateAPIView
+from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView,
+                                    DestroyAPIView)
 from .models import Task
 from rest_framework.exceptions import PermissionDenied
 
@@ -38,24 +40,25 @@ class ListTaskAPIView(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        status_param = self.request.query_params.get("status")
 
-        # Admin → See all tasks
         if user.role == "Admin":
-            return Task.objects.all().order_by("-created_at")
+            queryset = Task.objects.all()
 
-        # Manager → See tasks created by them
-        if user.role == "Manager":
-            return Task.objects.filter(
-                created_by=user
-            ).order_by("-created_at")
+        elif user.role == "Manager":
+            queryset = Task.objects.filter(created_by=user)
 
-        # Member → See tasks assigned to them
-        if user.role == "Member":
-            return Task.objects.filter(
-                assigned_to=user
-            ).order_by("-created_at")
+        elif user.role == "Member":
+            queryset = Task.objects.filter(assigned_to=user)
 
-        return Task.objects.none()
+        else:
+            return Task.objects.none()
+
+        # Apply status filter if provided
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+
+        return queryset.order_by("-created_at")
 
 
 # retrieve task apiview
@@ -85,7 +88,7 @@ class RetrieveTaskAPIView(RetrieveAPIView):
         raise PermissionDenied("You do not have permission to access this task.")
 
 
-#update tsk apiview
+#update task apiview
 class UpdateTaskAPIView(UpdateAPIView):
     queryset = Task.objects.all()
     serializer_class = TaskUpdateSerializer
@@ -105,3 +108,20 @@ class UpdateTaskAPIView(UpdateAPIView):
             return task
 
         raise PermissionDenied("You do not have permission to update this task.")
+    
+
+#delete task apiview
+class DeleteTaskAPIView(DestroyAPIView):
+    queryset = Task.objects.all()
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_object(self):
+        task = super().get_object()
+        user = self.request.user
+
+        # Only Admin can delete
+        if user.role == "Admin":
+            return task
+
+        raise PermissionDenied("Only Admin can delete tasks.")
