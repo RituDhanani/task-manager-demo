@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-7$n&i3a_s+)9ehk509a!l&^6shonadcgknj(hxy)s-d6#uw@ry
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'accounts',
     'tasks',
     'rest_framework_simplejwt.token_blacklist',
+    'drf_yasg',
+    'django_celery_beat',
 
 ]
 
@@ -150,3 +152,14 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ritu.tagline@gmail.com'
 EMAIL_HOST_PASSWORD = 'wwecvcfuxzhoghuy' 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+# Celery Configuration
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
+
+# Retry configuration
+CELERY_TASK_DEFAULT_RETRY_DELAY = 5
+CELERY_TASK_MAX_RETRIES = 3

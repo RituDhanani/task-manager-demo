@@ -9,6 +9,7 @@ from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView
                                     DestroyAPIView)
 from .models import Task
 from rest_framework.exceptions import PermissionDenied
+from .services import TaskService
 
 
 #create task apiview
@@ -23,7 +24,8 @@ class CreateTaskAPIView(APIView):
         )
 
         if serializer.is_valid():
-            serializer.save()
+            TaskService.create_task(serializer, request.user)
+
             return Response(
                 {"message": "Task created successfully"},
                 status=status.HTTP_201_CREATED
