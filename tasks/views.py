@@ -114,31 +114,11 @@ class UpdateTaskAPIView(APIView):
         updated_task = serializer.save()
         # Trigger Celery if status changed to completed
         if old_status != "Completed" and updated_task.status == "Completed":
-            print("Hellooooo")
             transaction.on_commit(
                 lambda: notify_admin_task_completed.delay(updated_task.id)
             )
 
         return Response(serializer.data, status=status.HTTP_200_OK)
-"""class UpdateTaskAPIView(UpdateAPIView):
-    queryset = Task.objects.all()
-    serializer_class = TaskUpdateSerializer
-    permission_classes = [IsAuthenticated]
-    lookup_field = "id"
-
-    def get_object(self):
-        task = super().get_object()
-        user = self.request.user
-
-        # Manager → Can update only tasks they created
-        if user.role == "Manager" and task.created_by == user:
-            return task
-
-        # Member → Can update only tasks assigned to them
-        if user.role == "Member" and task.assigned_to == user:
-            return task
-
-        raise PermissionDenied("You do not have permission to update this task.")"""
     
 
 #delete task apiview
