@@ -1,5 +1,10 @@
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from .tasks import send_task_assignment_email
+from rest_framework.exceptions import NotFound
+from .models import Task
+from .serializers import TaskUpdateSerializer
+from .tasks import notify_admin_task_completed
+from django.utils import timezone
 
 class TaskService:
 
@@ -21,3 +26,13 @@ class TaskService:
 
         return task
 
+def mark_task_completed(task: Task):
+    """
+    Mark a task completed and trigger email notification to admins.
+    """
+    task.status = 'completed'
+    task.completed_at = timezone.now()
+    task.save()
+
+    # Trigger background Celery task after DB commit
+    transaction.on_commit(lambda: notify_admin_task_completed.delay(task.id))
