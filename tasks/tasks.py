@@ -5,6 +5,7 @@ from .models import Task
 from django.contrib.auth import get_user_model
 import logging
 from django.utils import timezone
+from .services import  get_tasks_due_within_24_hours, send_due_reminder_email
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
@@ -75,4 +76,20 @@ def notify_admin_task_completed(self, task_id):
         print(f"Task with id {task_id} does not exist")
     except Exception as exc:
         # Retry after 1 minute if email fails
+        raise self.retry(exc=exc, countdown=60)
+    
+
+
+
+@shared_task(bind=True, max_retries=3)
+def send_due_task_reminders(self):
+    try:
+        tasks = get_tasks_due_within_24_hours()
+
+        for task in tasks:
+            send_due_reminder_email(task)
+
+        print("Due task reminders processed.")
+
+    except Exception as exc:
         raise self.retry(exc=exc, countdown=60)

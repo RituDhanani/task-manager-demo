@@ -3,8 +3,11 @@ from django.db import transaction
 from rest_framework.exceptions import NotFound
 from .models import Task
 from .serializers import TaskUpdateSerializer
-from .tasks import notify_admin_task_completed
 from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+
 
 class TaskService:
 
@@ -35,4 +38,31 @@ def mark_task_completed(task: Task):
     task.save()
 
     # Trigger background Celery task after DB commit
+    from .tasks import notify_admin_task_completed
+
     transaction.on_commit(lambda: notify_admin_task_completed.delay(task.id))
+
+
+def get_tasks_due_within_24_hours():
+    now = timezone.now()
+    next_24 = now + timedelta(hours=24)
+
+    return Task.objects.filter(
+        due_date__range=(now, next_24),
+        reminder_sent=False
+    )
+
+
+def send_due_reminder_email(task):
+    subject = f"Reminder: Task '{task.title}' is due soon"
+    message = f"Your task '{task.title}' is due on {task.due_date}."
+
+    send_mail(
+        subject,
+        message,
+        None,
+        [task.assigned_to.email],
+    )
+
+    task.reminder_sent = True
+    task.save()

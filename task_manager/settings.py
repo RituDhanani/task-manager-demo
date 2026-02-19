@@ -166,3 +166,15 @@ CELERY_RESULT_SERIALIZER = 'json'
 # Retry configuration
 CELERY_TASK_DEFAULT_RETRY_DELAY = 5
 CELERY_TASK_MAX_RETRIES = 3
+
+
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'send-due-task-reminders-every-hour': {
+        'task': 'tasks.tasks.send_due_task_reminders',
+        'schedule': crontab(minute=0, hour='*'),  # every hour
+    },
+}
+
