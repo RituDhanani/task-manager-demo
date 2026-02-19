@@ -7,7 +7,7 @@ User = get_user_model()
 
 class TaskCreateSerializer(serializers.ModelSerializer):
 
-    assigned_to = serializers.EmailField(write_only=True)
+    assigned_to_email = serializers.EmailField(write_only=True)
 
     class Meta:
         model = Task
@@ -16,26 +16,28 @@ class TaskCreateSerializer(serializers.ModelSerializer):
             "description",
             "priority",
             "status",
-            "assigned_to"
+            "assigned_to_email",
         ]
 
-    def create(self, validated_data):
-        assigned_email = validated_data.pop("assigned_to")
-
+    def validate_assigned_to_email(self, value):
         try:
-            assigned_user = User.objects.get(email=assigned_email)
+            user = User.objects.get(email=value)
         except User.DoesNotExist:
-            raise serializers.ValidationError(
-                {"assigned_to": "User with this email does not exist"}
-            )
+            raise serializers.ValidationError("User with this email does not exist.")
+
+        return value
+
+    def create(self, validated_data):
+        email = validated_data.pop("assigned_to_email")
+        user = User.objects.get(email=email)
 
         task = Task.objects.create(
-            assigned_to=assigned_user,
-            created_by=self.context["request"].user,
+            assigned_to=user,
             **validated_data
         )
 
         return task
+
 
 
 

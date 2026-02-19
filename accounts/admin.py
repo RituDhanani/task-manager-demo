@@ -6,7 +6,7 @@ from .models import User
 class CustomUserAdmin(BaseUserAdmin):
     model = User
 
-    list_display = ('email', 'first_name', 'last_name', 'role', 'is_staff')
+    list_display = ('email', 'id', 'first_name', 'last_name', 'role', 'is_staff')
     list_filter = ('role', 'is_staff', 'is_active')
 
     ordering = ('email',)

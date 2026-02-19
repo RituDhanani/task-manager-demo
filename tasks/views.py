@@ -1,7 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
+
+from tasks.tasks import notify_admin_task_completed
 from .serializers import (TaskCreateSerializer, TaskListSerializer, 
                           TaskUpdateSerializer)
 from .permissions import IsAdminOrManager
@@ -9,6 +11,10 @@ from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView
                                     DestroyAPIView)
 from .models import Task
 from rest_framework.exceptions import PermissionDenied
+from .services import TaskService, mark_task_completed
+from django.shortcuts import get_object_or_404
+from django.db import transaction
+
 
 
 #create task apiview
@@ -23,7 +29,8 @@ class CreateTaskAPIView(APIView):
         )
 
         if serializer.is_valid():
-            serializer.save()
+            TaskService.create_task(serializer, request.user)
+
             return Response(
                 {"message": "Task created successfully"},
                 status=status.HTTP_201_CREATED
@@ -89,25 +96,29 @@ class RetrieveTaskAPIView(RetrieveAPIView):
 
 
 #update task apiview
-class UpdateTaskAPIView(UpdateAPIView):
-    queryset = Task.objects.all()
-    serializer_class = TaskUpdateSerializer
+class UpdateTaskAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    lookup_field = "id"
+    def put(self, request, id):
+        try:
+            task = Task.objects.get(id=id)
+        except Task.DoesNotExist:
+            return Response({"detail": "Task not found"}, status=404)
+        user = request.user
+        if not (user.is_staff or task.assigned_to == user):
+            return Response({"detail": "Not allowed"}, status=403)
 
-    def get_object(self):
-        task = super().get_object()
-        user = self.request.user
+        old_status = task.status
 
-        # Manager → Can update only tasks they created
-        if user.role == "Manager" and task.created_by == user:
-            return task
+        serializer = TaskUpdateSerializer(task, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_task = serializer.save()
+        # Trigger Celery if status changed to completed
+        if old_status != "Completed" and updated_task.status == "Completed":
+            transaction.on_commit(
+                lambda: notify_admin_task_completed.delay(updated_task.id)
+            )
 
-        # Member → Can update only tasks assigned to them
-        if user.role == "Member" and task.assigned_to == user:
-            return task
-
-        raise PermissionDenied("You do not have permission to update this task.")
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
 
 #delete task apiview
@@ -125,3 +136,4 @@ class DeleteTaskAPIView(DestroyAPIView):
             return task
 
         raise PermissionDenied("Only Admin can delete tasks.")
+    
