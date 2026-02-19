@@ -23,17 +23,19 @@ class TaskService:
         task = serializer.save(created_by=user)
 
         # Trigger celery task only after successful DB commit
-        transaction.on_commit(
-            lambda: send_task_assignment_email.delay(task.id)
-        )
+        transaction.on_commit(lambda: send_task_assignment_email.delay(task.id))
+
+        # Log activity (AFTER commit)
+        log_user_activity(user=user, action="Created Task", task=task)
 
         return task
+
 
 def mark_task_completed(task: Task):
     """
     Mark a task completed and trigger email notification to admins.
     """
-    task.status = 'completed'
+    task.status = "completed"
     task.completed_at = timezone.now()
     task.save()
 
@@ -47,10 +49,7 @@ def get_tasks_due_within_24_hours():
     now = timezone.now()
     next_24 = now + timedelta(hours=24)
 
-    return Task.objects.filter(
-        due_date__range=(now, next_24),
-        reminder_sent=False
-    )
+    return Task.objects.filter(due_date__range=(now, next_24), reminder_sent=False)
 
 
 def send_due_reminder_email(task):
@@ -66,3 +65,12 @@ def send_due_reminder_email(task):
 
     task.reminder_sent = True
     task.save()
+
+
+def log_user_activity(user, action, task=None):
+
+    from .tasks import create_activity_log
+
+    transaction.on_commit(
+        lambda: create_activity_log.delay(user.id, action, task.id if task else None)
+    )
