@@ -14,6 +14,9 @@ from rest_framework.exceptions import PermissionDenied
 from .services import TaskService, mark_task_completed
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from .tasks import send_due_task_reminders
+from rest_framework.permissions import IsAdminUser
+
 
 
 
@@ -137,3 +140,14 @@ class DeleteTaskAPIView(DestroyAPIView):
 
         raise PermissionDenied("Only Admin can delete tasks.")
     
+
+
+class TriggerReminderAPIView(APIView):
+
+    def post(self, request):
+        send_due_task_reminders.delay()
+
+        return Response(
+            {"message": "Reminder task triggered successfully"},
+            status=status.HTTP_200_OK
+        )

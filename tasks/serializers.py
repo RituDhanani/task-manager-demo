@@ -17,6 +17,7 @@ class TaskCreateSerializer(serializers.ModelSerializer):
             "priority",
             "status",
             "assigned_to_email",
+            "due_date",
         ]
 
     def validate_assigned_to_email(self, value):
