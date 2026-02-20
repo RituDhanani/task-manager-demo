@@ -1,11 +1,12 @@
 from celery import shared_task
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMessage
 from django.conf import settings
-from .models import ActivityLog, Task
+from .models import ActivityLog, CSVExport, CSVExport, Task
 from django.contrib.auth import get_user_model
 import logging
 from django.utils import timezone
-from .services import get_tasks_due_within_24_hours, send_due_reminder_email
+from .services import generate_tasks_csv, get_tasks_due_within_24_hours, send_due_reminder_email
+from tasks.models import Task  
 
 User = get_user_model()
 
@@ -57,7 +58,7 @@ def notify_admin_task_completed(self, task_id):
 
         subject = f"Task Completed: {task.title}"
         message = f"The task '{task.title}' assigned to {task.assigned_to} has been marked as completed."
-        from_email = None  # Uses DEFAULT_FROM_EMAIL
+        from_email = None  
 
         recipient_list = [admin.email for admin in admins if admin.email]
 
@@ -92,15 +93,27 @@ def send_due_task_reminders(self):
 def create_activity_log(self, user_id, action, task_id=None):
     try:
         user = User.objects.get(id=user_id)
-
-        # DO NOT crash if task is deleted
         task = None
         if task_id:
             task = Task.objects.filter(id=task_id).first()
 
         ActivityLog.objects.create(user=user, action=action, task=task)
-
         print(f"[ActivityLog Created] {action}")
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60)
 
+
+@shared_task(bind=True, max_retries=3)
+def heavy_csv_export_task(self, admin_email):
+    try:
+        file_name = f"tasks_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        file_path = generate_tasks_csv(file_name)
+
+        email = EmailMessage(
+            subject="Your Task CSV Export is Ready",
+            body=f"Download your CSV file from: {settings.MEDIA_URL}{file_name}",
+            to=[admin_email]
+        )
+        email.send()
     except Exception as exc:
         raise self.retry(exc=exc, countdown=60)

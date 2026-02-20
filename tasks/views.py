@@ -12,10 +12,10 @@ from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView
                 )
 from .models import Task
 from rest_framework.exceptions import PermissionDenied
-from .services import TaskService, log_user_activity
+from .services import  TaskService, log_user_activity
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from .tasks import send_due_task_reminders
+from .tasks import send_due_task_reminders, heavy_csv_export_task
 from rest_framework.permissions import IsAdminUser
 
 
@@ -153,7 +153,7 @@ class DeleteTaskAPIView(DestroyAPIView):
 
         instance.delete()
 
-
+#trigger reminder apiview
 class TriggerReminderAPIView(APIView):
 
     def post(self, request):
@@ -163,3 +163,18 @@ class TriggerReminderAPIView(APIView):
             {"message": "Reminder task triggered successfully"},
             status=status.HTTP_200_OK,
         )
+
+
+#CSV export apiview
+class HeavyCSVExportView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        admin_email = request.user.email
+
+        # Ensure task runs only after DB transaction is committed
+        transaction.on_commit(lambda: heavy_csv_export_task.delay(admin_email))
+
+        return Response({
+            "message": "Your export is being prepared. You will receive an email shortly."
+        })
