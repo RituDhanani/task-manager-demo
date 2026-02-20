@@ -4,45 +4,42 @@ from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from tasks.tasks import notify_admin_task_completed
-from .serializers import (TaskCreateSerializer, TaskListSerializer, 
+from .serializers import (TaskCreateSerializer, TaskListSerializer,
                           TaskUpdateSerializer)
 from .permissions import IsAdminOrManager
 from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView,
-                                    DestroyAPIView)
+                                    DestroyAPIView,
+                )
 from .models import Task
 from rest_framework.exceptions import PermissionDenied
-from .services import TaskService, mark_task_completed
+from .services import TaskService, log_user_activity
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from .tasks import send_due_task_reminders
 from rest_framework.permissions import IsAdminUser
 
 
-
-
-#create task apiview
+# create task apiview
 class CreateTaskAPIView(APIView):
 
     permission_classes = [IsAuthenticated, IsAdminOrManager]
 
     def post(self, request):
         serializer = TaskCreateSerializer(
-            data=request.data,
-            context={"request": request}
+            data=request.data, context={"request": request}
         )
 
         if serializer.is_valid():
             TaskService.create_task(serializer, request.user)
 
             return Response(
-                {"message": "Task created successfully"},
-                status=status.HTTP_201_CREATED
+                {"message": "Task created successfully"}, status=status.HTTP_201_CREATED
             )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
-#list task apiview
+
+# list task apiview
 class ListTaskAPIView(ListAPIView):
 
     serializer_class = TaskListSerializer
@@ -98,9 +95,10 @@ class RetrieveTaskAPIView(RetrieveAPIView):
         raise PermissionDenied("You do not have permission to access this task.")
 
 
-#update task apiview
+# update task apiview
 class UpdateTaskAPIView(APIView):
     permission_classes = [IsAuthenticated]
+
     def put(self, request, id):
         try:
             task = Task.objects.get(id=id)
@@ -121,10 +119,16 @@ class UpdateTaskAPIView(APIView):
                 lambda: notify_admin_task_completed.delay(updated_task.id)
             )
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+        log_user_activity(
+            user=user,
+            action="Updated Task",
+            task=updated_task
+        )
 
-#delete task apiview
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# delete task apiview
 class DeleteTaskAPIView(DestroyAPIView):
     queryset = Task.objects.all()
     permission_classes = [IsAuthenticated]
@@ -137,9 +141,17 @@ class DeleteTaskAPIView(DestroyAPIView):
         # Only Admin can delete
         if user.role == "Admin":
             return task
-
         raise PermissionDenied("Only Admin can delete tasks.")
     
+
+    def perform_destroy(self, instance):
+        log_user_activity(
+            user=self.request.user,
+            action="Deleted Task",
+            task=instance
+        )
+
+        instance.delete()
 
 
 class TriggerReminderAPIView(APIView):
@@ -149,5 +161,5 @@ class TriggerReminderAPIView(APIView):
 
         return Response(
             {"message": "Reminder task triggered successfully"},
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )

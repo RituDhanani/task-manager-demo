@@ -1,11 +1,13 @@
 from celery import shared_task
 from django.core.mail import send_mail
 from django.conf import settings
-from .models import Task
+from .models import ActivityLog, Task
 from django.contrib.auth import get_user_model
 import logging
 from django.utils import timezone
-from .services import  get_tasks_due_within_24_hours, send_due_reminder_email
+from .services import get_tasks_due_within_24_hours, send_due_reminder_email
+
+User = get_user_model()
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
@@ -13,7 +15,6 @@ def send_task_assignment_email(self, task_id):
     """
     Background email sending when task assigned
     """
-
     try:
         task = Task.objects.get(id=task_id)
 
@@ -48,15 +49,8 @@ def send_task_assignment_email(self, task_id):
         raise self.retry(exc=e)
 
 
-
-
-User = get_user_model()
-
 @shared_task(bind=True, max_retries=3)
 def notify_admin_task_completed(self, task_id):
-    """
-    Send email to all admins when a task is marked completed.
-    """
     try:
         task = Task.objects.get(id=task_id)
         admins = User.objects.filter(is_staff=True)
@@ -70,15 +64,14 @@ def notify_admin_task_completed(self, task_id):
         if recipient_list:
             send_mail(subject, message, from_email, recipient_list)
 
-        print(f"[Activity Log] Task '{task.title}' marked completed. Emails sent to admins: {recipient_list}")
+        print(
+            f"[Activity Log] Task '{task.title}' marked completed. Emails sent to admins: {recipient_list}"
+        )
 
     except Task.DoesNotExist:
         print(f"Task with id {task_id} does not exist")
     except Exception as exc:
-        # Retry after 1 minute if email fails
         raise self.retry(exc=exc, countdown=60)
-    
-
 
 
 @shared_task(bind=True, max_retries=3)
@@ -90,6 +83,24 @@ def send_due_task_reminders(self):
             send_due_reminder_email(task)
 
         print("Due task reminders processed.")
+
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60)
+
+
+@shared_task(bind=True, max_retries=3)
+def create_activity_log(self, user_id, action, task_id=None):
+    try:
+        user = User.objects.get(id=user_id)
+
+        # DO NOT crash if task is deleted
+        task = None
+        if task_id:
+            task = Task.objects.filter(id=task_id).first()
+
+        ActivityLog.objects.create(user=user, action=action, task=task)
+
+        print(f"[ActivityLog Created] {action}")
 
     except Exception as exc:
         raise self.retry(exc=exc, countdown=60)
