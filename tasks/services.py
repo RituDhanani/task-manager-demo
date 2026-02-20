@@ -1,12 +1,16 @@
+import csv
+import os
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from rest_framework.exceptions import NotFound
-from .models import Task
+from .models import CSVExport, Task
 from .serializers import TaskUpdateSerializer
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.conf import settings
+from .models import Task
 
 
 class TaskService:
@@ -16,16 +20,10 @@ class TaskService:
         """
         Creates a task and triggers background email after DB commit
         """
-        from django.db import transaction
         from .tasks import send_task_assignment_email
 
-        # Save task with correct user
         task = serializer.save(created_by=user)
-
-        # Trigger celery task only after successful DB commit
         transaction.on_commit(lambda: send_task_assignment_email.delay(task.id))
-
-        # Log activity (AFTER commit)
         log_user_activity(user=user, action="Created Task", task=task)
 
         return task
@@ -39,7 +37,6 @@ def mark_task_completed(task: Task):
     task.completed_at = timezone.now()
     task.save()
 
-    # Trigger background Celery task after DB commit
     from .tasks import notify_admin_task_completed
 
     transaction.on_commit(lambda: notify_admin_task_completed.delay(task.id))
@@ -62,15 +59,45 @@ def send_due_reminder_email(task):
         None,
         [task.assigned_to.email],
     )
-
     task.reminder_sent = True
     task.save()
 
 
 def log_user_activity(user, action, task=None):
-
     from .tasks import create_activity_log
 
     transaction.on_commit(
         lambda: create_activity_log.delay(user.id, action, task.id if task else None)
     )
+
+
+def generate_tasks_csv(file_name: str) -> str:
+    media_root = settings.MEDIA_ROOT
+
+    if not os.path.exists(media_root):
+        os.makedirs(media_root)
+
+    file_path = os.path.join(media_root, file_name)
+
+    tasks = Task.objects.select_related("assigned_to").all()
+
+    with open(file_path, mode="w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.writer(csv_file)
+
+        writer.writerow(
+            ["Title", "Status", "Priority", "Assigned User", "Created At", "Due Date"]
+        )
+
+        for task in tasks:
+            writer.writerow(
+                [
+                    task.title,
+                    task.status,
+                    task.priority,
+                    task.assigned_to.email if task.assigned_to else "",
+                    task.created_at.strftime("%Y-%m-%d %H:%M"),
+                    task.due_date.strftime("%Y-%m-%d") if task.due_date else "",
+                ]
+            )
+
+    return file_path

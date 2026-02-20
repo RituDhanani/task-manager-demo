@@ -161,7 +161,7 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 CELERY_TIMEZONE = 'UTC'
 CELERY_RESULT_SERIALIZER = 'json'
-
+CELERY_BEAT_SCHEDULE = {}
 
 # Retry configuration
 CELERY_TASK_DEFAULT_RETRY_DELAY = 5
@@ -175,6 +175,12 @@ CELERY_BEAT_SCHEDULE = {
     'send-due-task-reminders-every-hour': {
         'task': 'tasks.tasks.send_due_task_reminders',
         'schedule': crontab(minute=0, hour='*'),  # every hour
+        
     },
 }
 
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
