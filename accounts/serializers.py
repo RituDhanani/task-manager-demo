@@ -4,6 +4,8 @@ from .models import User, PasswordResetOTP
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from .validators import validate_profile_image
+
 
 #signup serializer
 class SignupSerializer(serializers.ModelSerializer):
@@ -122,3 +124,16 @@ class LogoutSerializer(serializers.Serializer):
     def validate(self, attrs):
         self.token = attrs['refresh']
         return attrs
+
+
+# Profile Image Serializer
+class ProfileImageUploadSerializer(serializers.ModelSerializer):
+
+    profile_image = serializers.ImageField(required=True)
+
+    class Meta:
+        model = User
+        fields = ["profile_image"]
+
+    def validate_profile_image(self, value):
+        return validate_profile_image(value)

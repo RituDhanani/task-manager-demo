@@ -1,6 +1,6 @@
 from rest_framework import generics, status
 from .models import User
-from .serializers import (SignupSerializer, LoginSerializer, ChangePasswordSerializer,
+from .serializers import (ProfileImageUploadSerializer, SignupSerializer, LoginSerializer, ChangePasswordSerializer,
                           ResetPasswordOTPRequestSerializer,
                           ResetPasswordOTPConfirmSerializer, UserProfileSerializer,
                           LogoutSerializer)
@@ -9,7 +9,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.db import transaction
+from .serializers import ProfileImageUploadSerializer
+from .services import update_profile_image
 
 
 # Signup API View
@@ -97,3 +99,27 @@ class LogoutView(APIView):
             return Response({"detail": "Logout successful. Token has been blacklisted."}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({"detail": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Profile Image Upload API View
+class ProfileImageUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ProfileImageUploadSerializer(
+            instance=request.user,
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        transaction.on_commit(
+            lambda: update_profile_image(
+                request.user,
+                serializer.validated_data["profile_image"]
+            )
+        )
+
+        return Response({
+            "message": "Profile image uploaded successfully."
+        })
