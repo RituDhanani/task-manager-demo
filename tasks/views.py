@@ -1,16 +1,17 @@
+from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from tasks.tasks import notify_admin_task_completed
-from .serializers import (TaskCreateSerializer, TaskListSerializer,
+from .serializers import (TaskAttachmentSerializer, TaskCreateSerializer, TaskListSerializer,
                           TaskUpdateSerializer)
 from .permissions import IsAdminOrManager
 from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView,
                                     DestroyAPIView,
                 )
-from .models import Task
+from .models import Task, TaskAttachment
 from rest_framework.exceptions import PermissionDenied
 from .services import  TaskService, log_user_activity
 from django.shortcuts import get_object_or_404
@@ -178,3 +179,12 @@ class HeavyCSVExportView(APIView):
         return Response({
             "message": "Your export is being prepared. You will receive an email shortly."
         })
+    
+#task attachment apiview
+class TaskAttachmentUploadView(generics.CreateAPIView):
+    queryset = TaskAttachment.objects.all()
+    serializer_class = TaskAttachmentSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)

@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Task
+
+from tasks.validators import validate_task_attachment
+from .models import Task, TaskAttachment
 
 User = get_user_model()
 
@@ -69,3 +71,12 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
             "priority",
             "status",
         ]
+
+
+class TaskAttachmentSerializer(serializers.ModelSerializer):
+
+    file = serializers.FileField(validators=[validate_task_attachment])
+    class Meta:
+        model = TaskAttachment
+        fields = ["id", "task", "file", "uploaded_at"]
+        read_only_fields = ["uploaded_at"]
