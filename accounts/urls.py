@@ -12,7 +12,7 @@ urlpatterns = [
     path('reset-password-confirm/', ResetPasswordOTPConfirmAPIView.as_view(), name='reset_password_otp_confirm'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('upload-profile-image/', ProfileImageUploadView.as_view(), name='upload-profile-image'),
+    path('upload-image/', ProfileImageUploadView.as_view(), name='upload-profile-image'),
 
 
 ]
