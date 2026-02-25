@@ -1,3 +1,5 @@
+import os
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils import timezone
@@ -20,6 +22,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault("role", "Admin")
 
         return self.create_user(email, password, **extra_fields)
 
@@ -37,6 +40,7 @@ class User(AbstractUser):
 
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    profile_image = models.ImageField(upload_to='profiles/', null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
@@ -57,3 +61,5 @@ class PasswordResetOTP(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.otp}"
+    
+    
