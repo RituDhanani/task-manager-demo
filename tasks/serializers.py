@@ -41,9 +41,6 @@ class TaskCreateSerializer(serializers.ModelSerializer):
 
         return task
 
-
-
-
 class TaskListSerializer(serializers.ModelSerializer):
     assigned_to = serializers.EmailField(source="assigned_to.email")
     created_by = serializers.EmailField(source="created_by.email")

@@ -193,3 +193,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MAX_TASK_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_TASK_ATTACHMENT_TYPES = ["image/jpeg", "image/png", "application/pdf", 
                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+
+MAX_PROFILE_IMAGE_SIZE = 2 * 1024 * 1024  # 2MB
+ALLOWED_PROFILE_IMAGE_TYPES = ["image/jpeg", "image/png"]

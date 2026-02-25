@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (CreateTaskAPIView, ListTaskAPIView, RetrieveTaskAPIView, 
                     TaskAttachmentUploadView, UpdateTaskAPIView, DeleteTaskAPIView, 
-                    TriggerReminderAPIView, HeavyCSVExportView)
+                    TriggerReminderAPIView, HeavyCSVExportView, SecureAttachmentDownloadView)
 
 urlpatterns = [
     path('create-task/', CreateTaskAPIView.as_view(), name='create_task'),
@@ -12,7 +12,7 @@ urlpatterns = [
     path("trigger-reminder/", TriggerReminderAPIView.as_view(), name="trigger_reminder"),
     path("export-tasks/", HeavyCSVExportView.as_view(), name="export-tasks"),
     path("attachments-upload/", TaskAttachmentUploadView.as_view(), name="upload-attachment"),
-
+    path("attachments/<int:id>/download/", SecureAttachmentDownloadView.as_view(), name="download-attachment"),
 
 
 ]
