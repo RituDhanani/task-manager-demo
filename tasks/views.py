@@ -1,5 +1,7 @@
+import os
+from django.http import FileResponse
 from rest_framework import generics
-from rest_framework.views import APIView
+from rest_framework.views import APIView, Http404
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -7,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from tasks.tasks import notify_admin_task_completed
 from .serializers import (TaskAttachmentSerializer, TaskCreateSerializer, TaskListSerializer,
                           TaskUpdateSerializer)
-from .permissions import IsAdminOrManager
+from .permissions import CanAccessAttachment, IsAdminOrManager
 from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView,
                                     DestroyAPIView,
                 )
@@ -180,7 +182,7 @@ class HeavyCSVExportView(APIView):
             "message": "Your export is being prepared. You will receive an email shortly."
         })
     
-#task attachment apiview
+#task attachment upload apiview
 class TaskAttachmentUploadView(generics.CreateAPIView):
     queryset = TaskAttachment.objects.all()
     serializer_class = TaskAttachmentSerializer
@@ -188,3 +190,27 @@ class TaskAttachmentUploadView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
+
+#task attachmet download apiview
+class SecureAttachmentDownloadView(APIView):
+    permission_classes = [IsAuthenticated, CanAccessAttachment]
+
+    def get(self, request, id):
+
+        attachment = get_object_or_404(TaskAttachment, pk=id)
+
+        # Object-level permission check
+        self.check_object_permissions(request, attachment)
+
+        # Ensure file exists
+        if not attachment.file:
+            raise Http404("File not found.")
+
+        if not os.path.exists(attachment.file.path):
+            raise Http404("File not found on server.")
+
+        return FileResponse(
+            open(attachment.file.path, "rb"),
+            as_attachment=True,
+            filename=os.path.basename(attachment.file.name),
+        )
