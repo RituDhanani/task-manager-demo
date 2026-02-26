@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
     'django_celery_beat',
-
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -74,7 +74,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'task_manager.wsgi.application'
-
+ASGI_APPLICATION = "task_manager.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -166,7 +166,14 @@ CELERY_BEAT_SCHEDULE = {}
 CELERY_TASK_DEFAULT_RETRY_DELAY = 5
 CELERY_TASK_MAX_RETRIES = 3
 
-
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 from celery.schedules import crontab
 
