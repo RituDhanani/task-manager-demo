@@ -1,6 +1,6 @@
 from django.urls import path
-from chat.routing import websocket_urlpatterns as chat_ws_urls
+from chat.routing import websocket_urlpatterns as chat_websockets_urls
 
 websocket_urlpatterns = [
-    *chat_ws_urls,
+    *chat_websockets_urls,
 ]
