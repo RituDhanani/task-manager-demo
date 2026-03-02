@@ -15,7 +15,7 @@ from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView
                 )
 from .models import Task, TaskAttachment
 from rest_framework.exceptions import PermissionDenied
-from .services import  TaskService, log_user_activity
+from .services import  TaskService, broadcast_task_status_update, log_user_activity
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from .tasks import send_due_task_reminders, heavy_csv_export_task
@@ -116,6 +116,12 @@ class UpdateTaskAPIView(APIView):
         serializer = TaskUpdateSerializer(task, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_task = serializer.save()
+
+        if old_status != updated_task.status:
+            broadcast_task_status_update(
+                task_id=updated_task.id,
+                status=updated_task.status,
+            )
         # Trigger Celery if status changed to completed
         if old_status != "Completed" and updated_task.status == "Completed":
             transaction.on_commit(

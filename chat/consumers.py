@@ -1,7 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from chat.services import create_message
+from chat.services import create_message, user_can_join_room
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -15,8 +15,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
 
-        room_exists = await self.room_exists(self.room_id)
-        if not room_exists:
+        allowed = await self.has_room_access()
+        if not allowed:
             await self.close()
             return
 
@@ -34,6 +34,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
+      
         data = json.loads(text_data)
         message_text = data.get("message")
 
@@ -53,13 +54,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def chat_message(self, event):
-        await self.send(text_data=json.dumps(event))
+        """
+        Receive chat message from group.
+        """
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "CHAT_MESSAGE",
+                    "message": event["message"],
+                    "sender": event["sender"],
+                    "timestamp": event["timestamp"],
+                }
+            )
+        )
+
+    async def task_status(self, event):
+        """
+        Receive task status update broadcast.
+        """
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "TASK_STATUS_UPDATE",
+                    "task_id": event["task_id"],
+                    "status": event["status"],
+                }
+            )
+        )
 
 
     @database_sync_to_async
-    def room_exists(self, room_id):
-        from chat.models import ChatRoom
-        return ChatRoom.objects.filter(id=room_id, is_active=True).exists()
+    def has_room_access(self) -> bool:
+        return user_can_join_room(
+            user=self.user,
+            room_id=self.room_id,
+        )
 
     @database_sync_to_async
     def save_message(self, content):

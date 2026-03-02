@@ -1,5 +1,6 @@
 import csv
 import os
+from asgiref.sync import async_to_sync
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from rest_framework.exceptions import NotFound
@@ -11,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import Task
+from channels.layers import get_channel_layer
 
 
 class TaskService:
@@ -101,3 +103,17 @@ def generate_tasks_csv(file_name: str) -> str:
             )
 
     return file_path
+
+
+def broadcast_task_status_update(*, task_id: int, status: str):
+    channel_layer = get_channel_layer()
+    room_group_name = f"chat_room_{task_id}"
+
+    async_to_sync(channel_layer.group_send)(
+        room_group_name,
+        {
+            "type": "task.status",
+            "task_id": task_id,
+            "status": status,
+        },
+    )
