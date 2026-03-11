@@ -3,39 +3,112 @@
 <head>
 
 <style>
+    /* Page setup for a clean PDF layout */
+    @page {
+        size: A4;
+        margin: 1in 0.8in 1in;
+        @top-center {
+            content: element(page-header);
+        }
+        @bottom-center {
+            content: element(page-footer);
+        }
+    }
 
-body{
-    font-family: Arial;
-}
+    body {
+        font-family: "Helvetica", Arial, sans-serif;
+        color: #2c2c2c;
+        background: #f8fafc;
+    }
 
-h2{
-    text-align:center;
-}
+    .header {
+        position: running(page-header);
+        text-align: center;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #2563eb;
+        color: #111827;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+    }
 
-table{
-    width:100%;
-    border-collapse: collapse;
-    margin-top:20px;
-}
+    .footer {
+        position: running(page-footer);
+        font-size: 11px;
+        color: #6b7280;
+        text-align: center;
+        padding-top: 6px;
+        border-top: 1px solid #e5e7eb;
+    }
 
-th,td{
-    border:1px solid #ddd;
-    padding:10px;
-}
+    .meta {
+        margin-top: 18px;
+        padding: 14px 16px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        font-size: 13px;
+    }
 
-th{
-    background:#f2f2f2;
-}
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+        background: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
+    }
 
+    th, td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 12px 14px;
+        font-size: 13px;
+    }
+
+    thead th {
+        background: linear-gradient(90deg, #1d4ed8, #2563eb);
+        color: #f9fafb;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        font-weight: 700;
+    }
+
+    tbody tr:nth-child(even) {
+        background: #f9fafb;
+    }
+
+    tbody tr:nth-child(odd) {
+        background: #ffffff;
+    }
+
+    tbody tr:hover {
+        background: #eef2ff;
+    }
+
+    .empty-row {
+        text-align: center;
+        font-style: italic;
+        color: #6b7280;
+    }
+
+    .page-number:before { content: counter(page); }
+    .total-pages:before { content: counter(pages); }
 </style>
 
 </head>
 
 <body>
 
-<h2>User Activity Report</h2>
+<div class="header">
+    User Activity Report
+</div>
 
-<p><strong>User:</strong> {{ user.username }}</p>
+<div class="meta">
+    <div><strong>Email:</strong> {{ user.email }}</div>
+    <div><strong>Generated:</strong> {% now "F j, Y, g:i a" %}</div>
+</div>
 
 <table>
 
@@ -62,7 +135,7 @@ th{
 {% empty %}
 
 <tr>
-<td colspan="4">No activity logs found</td>
+<td colspan="4" class="empty-row">No activity logs found</td>
 </tr>
 
 {% endfor %}
@@ -70,6 +143,9 @@ th{
 </tbody>
 
 </table>
+<div class="footer">
+    Page <span class="page-number"></span> of <span class="total-pages"></span>
+</div>
 
 </body>
 </html>
