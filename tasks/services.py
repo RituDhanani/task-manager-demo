@@ -148,3 +148,17 @@ def generate_task_detail_pdf(task):
     pdf_file = HTML(string=html_string).write_pdf()
 
     return pdf_file
+
+
+def generate_activity_report_pdf(user, logs):
+    html_string = render_to_string(
+        "tasks/activity_report.html",
+        {
+            "user": user,
+            "logs": logs
+        }
+    )
+
+    pdf_file = HTML(string=html_string).write_pdf()
+
+    return pdf_file
