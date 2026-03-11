@@ -15,9 +15,9 @@ from .permissions import CanAccessAttachment, IsAdminOrManager
 from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView,
                                     DestroyAPIView,
                 )
-from .models import Task, TaskAttachment
+from .models import ActivityLog, Task, TaskAttachment
 from rest_framework.exceptions import PermissionDenied
-from .services import  TaskService, broadcast_task_status_update, generate_task_detail_pdf, generate_task_report_pdf, log_user_activity
+from .services import  TaskService, broadcast_task_status_update, generate_activity_report_pdf, generate_task_detail_pdf, generate_task_report_pdf, log_user_activity
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from .tasks import send_due_task_reminders, heavy_csv_export_task
@@ -277,6 +277,35 @@ class TaskDetailPDFView(APIView):
         filename = f"task-detail-{task.id}.pdf"
 
         response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
+
+#activity report pdf generation apiview
+class ActivityReportPDFView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        if request.user.is_superuser:
+            logs = ActivityLog.objects.all()
+
+        elif request.user.is_staff:
+            logs = ActivityLog.objects.filter(user=request.user)
+
+        else:
+            logs = ActivityLog.objects.filter(user=request.user)
+
+        pdf = generate_activity_report_pdf(
+            user=request.user,
+            logs=logs
+        )
+
+        filename = f"activity-report-{request.user.id}.pdf"
+
+        response = HttpResponse(pdf, content_type="application/pdf")
+
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
         return response

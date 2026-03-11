@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import (CreateTaskAPIView, ListTaskAPIView, RetrieveTaskAPIView, 
+from .views import (ActivityReportPDFView, CreateTaskAPIView, ListTaskAPIView, RetrieveTaskAPIView, 
                     TaskAttachmentUploadView, TaskDetailPDFView, UpdateTaskAPIView, DeleteTaskAPIView, 
                     TriggerReminderAPIView, HeavyCSVExportView, SecureAttachmentDownloadView,
                     TaskReportPDFView)
@@ -16,4 +16,6 @@ urlpatterns = [
     path("attachments/<int:id>/download/", SecureAttachmentDownloadView.as_view(), name="download-attachment"),
     path("task-report-pdf/", TaskReportPDFView.as_view(), name="task-report-pdf"),
     path("task-detail-pdf/<int:task_id>/", TaskDetailPDFView.as_view(), name="task-detail-pdf"),
+    path("activity-report-pdf/", ActivityReportPDFView.as_view(), name="activity-report-pdf"),
+
 ]
