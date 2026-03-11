@@ -1,9 +1,12 @@
 import csv
+from io import BytesIO
+from django.template.loader import render_to_string
 import os
 from asgiref.sync import async_to_sync
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from rest_framework.exceptions import NotFound
+from weasyprint import HTML
 from .models import CSVExport, Task
 from .serializers import TaskUpdateSerializer
 from django.utils import timezone
@@ -117,3 +120,23 @@ def broadcast_task_status_update(*, task_id: int, status: str):
             "status": status,
         },
     )
+
+
+def generate_task_report_pdf(user, tasks):
+
+    html_string = render_to_string(
+        "tasks/task_report.html",
+        {
+            "user": user,
+            "tasks": tasks,
+            "date": timezone.now(),
+        },
+    )
+
+    pdf_file = BytesIO()
+
+    HTML(string=html_string).write_pdf(pdf_file)
+
+    pdf_file.seek(0)
+
+    return pdf_file.getvalue()
