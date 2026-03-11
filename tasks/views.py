@@ -17,7 +17,7 @@ from rest_framework.generics import (ListAPIView, RetrieveAPIView, UpdateAPIView
                 )
 from .models import Task, TaskAttachment
 from rest_framework.exceptions import PermissionDenied
-from .services import  TaskService, broadcast_task_status_update, generate_task_report_pdf, log_user_activity
+from .services import  TaskService, broadcast_task_status_update, generate_task_detail_pdf, generate_task_report_pdf, log_user_activity
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from .tasks import send_due_task_reminders, heavy_csv_export_task
@@ -225,21 +225,17 @@ class SecureAttachmentDownloadView(APIView):
     
 #task report pdf generation apiview
 class TaskReportPDFView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-
         # Admin
         if request.user.is_superuser:
             tasks = Task.objects.all()
-
         # Manager (your existing team logic)
         elif request.user.is_staff:
             tasks = Task.objects.filter(
                 assigned_to__in=request.user.team_members.all()
             ) | Task.objects.filter(assigned_to=request.user)
-
         # Normal User
         else:
             tasks = Task.objects.filter(assigned_to=request.user)
@@ -249,6 +245,36 @@ class TaskReportPDFView(APIView):
         )
 
         filename = f"task-report-{request.user.id}-{timezone.now().date()}.pdf"
+
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
+    
+#task details pdf generation apiview
+class TaskDetailPDFView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_id):
+
+        task = get_object_or_404(Task, id=task_id)
+
+        # Permission logic
+
+        if request.user.is_superuser:
+            pass
+
+        elif request.user.is_staff:
+            if task.created_by != request.user and task.assigned_to != request.user:
+                return Response({"detail": "You are not allowed to access this task"}, status=403)
+
+        else:
+            if task.assigned_to != request.user:
+                return Response({"detail": "You are not allowed to access this task"}, status=403)
+
+        pdf = generate_task_detail_pdf(task)
+
+        filename = f"task-detail-{task.id}.pdf"
 
         response = HttpResponse(pdf, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
